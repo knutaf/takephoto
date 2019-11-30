@@ -367,7 +367,7 @@ void Usage(PCWSTR wszComplaint)
         L"  -o: output path. This path can contain a printf format string, in\n"
         L"   which case it is treated as a format for repeated photos. The\n"
         L"   format string should contain a single numeric format.\n"
-        L"   Default: photo.jpg, or photo%%05u.jpg if -count is specified > 1.\n"
+        L"   Default: photo.jpg.\n"
         L"  -st milliseconds: stabilization time (time to wait after\n"
         L"   initializing the camera, before taking the first photo)\n"
         L"  -w: width of output image in pixels. Default: camera's native\n"
