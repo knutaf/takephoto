@@ -352,7 +352,27 @@ void Usage(PCWSTR wszComplaint)
         wprintf(L"Error: %s\n", wszComplaint);
     }
 
-    wprintf(L"Usage: takephoto.exe [-st milliseconds] [-w width_pixels] [-h height_pixels] [-o outpath] [-enum] [-d device_index]\n");
+    wprintf(
+        L"Usage: takephoto.exe [-st milliseconds] [-w width_pixels] [-h height_pixels] [-o outpath] [-int milliseconds] [-count num] [-enum] [-d device_index]\n"
+        L"  -?: this help text\n"
+        L"  -d: device index to use. Use -enum to list valid device indices.\n"
+        L"  -enum: Instead of taking a photo, list camera devices and device\n"
+        L"   indices currently available.\n"
+        L"  -h: height of output image in pixels. Default: camera's native\n"
+        L"   resolution.\n"
+        L"  -int: interval between taking pictures. Used only if -count is > 1.\n"
+        L"   Default: 1000\n"
+        L"  -count: number of photos to take. Use -1 to take infinite pictures.\n"
+        L"   Default: 1.\n"
+        L"  -o: output path. This path can contain a printf format string, in\n"
+        L"   which case it is treated as a format for repeated photos. The\n"
+        L"   format string should contain a single numeric format.\n"
+        L"   Default: photo.jpg, or photo%%05u.jpg if -count is specified > 1.\n"
+        L"  -st milliseconds: stabilization time (time to wait after\n"
+        L"   initializing the camera, before taking the first photo)\n"
+        L"  -w: width of output image in pixels. Default: camera's native\n"
+        L"   resolution.\n"
+        );
 }
 
 int
@@ -369,13 +389,15 @@ wmain(
     bool fChooseDevice = false;
     ULONG iDeviceIndex = 0;
     ULONG msStabilityTime = 5000;
+    ULONG msInterval = 1000;
+    UINT32 numPhotos = 1;
     UINT32 pxWidth = 0;
     UINT32 pxHeight = 0;
     PCWSTR wszOutputPath = L"photo.jpg";
 
     for (int i = 1; i < argc; i++)
     {
-        if (wcscmp(argv[i], L"/h") == 0 ||
+        if (wcscmp(argv[i], L"-?") == 0 ||
             wcscmp(argv[i], L"/?") == 0)
         {
             Usage(nullptr);
@@ -457,12 +479,47 @@ wmain(
                 goto error;
             }
         }
+        else if (wcscmp(argv[i], L"-int") == 0)
+        {
+            i++;
+            if (i < argc)
+            {
+                msInterval = _wtoi(argv[i]);
+            }
+            else
+            {
+                Usage(L"need photo interval in milliseconds");
+                hr = E_INVALIDARG;
+                goto error;
+            }
+        }
+        else if (wcscmp(argv[i], L"-count") == 0)
+        {
+            i++;
+            if (i < argc)
+            {
+                numPhotos = _wtoi(argv[i]);
+            }
+            else
+            {
+                Usage(L"need photo count");
+                hr = E_INVALIDARG;
+                goto error;
+            }
+        }
         else
         {
             Usage(L"unrecognized argument");
             hr = E_INVALIDARG;
             goto error;
         }
+    }
+
+    if (numPhotos > 1 && wcschr(wszOutputPath, L'%') == nullptr)
+    {
+        Usage(L"Output path must be a format string when -count > 1");
+        hr = E_INVALIDARG;
+        goto error;
     }
 
     CoInitializeEx(NULL, COINIT_MULTITHREADED);
@@ -589,7 +646,7 @@ wmain(
 
         wprintf(L"Taking photo...\n");
 
-        if (wcsstr(wszOutputPath, L"%") == nullptr)
+        if (numPhotos == 1)
         {
             hr = TakePhoto(spEngine.Get(), wszOutputPath, pxWidth, pxHeight);
             if (FAILED(hr))
@@ -600,7 +657,7 @@ wmain(
         }
         else
         {
-            for (DWORD photoNum = 0; ; ++photoNum)
+            for (DWORD photoNum = 0; photoNum < numPhotos; ++photoNum)
             {
                 wchar_t path[MAX_PATH];
                 hr = StringCchPrintfW(path, ARRAYSIZE(path), wszOutputPath, photoNum);
@@ -617,7 +674,7 @@ wmain(
                     goto error;
                 }
 
-                Sleep(1000);
+                Sleep(msInterval);
             }
         }
 
